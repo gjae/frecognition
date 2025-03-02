@@ -2,6 +2,7 @@ import os
 import os.path
 import logging
 from flask import Flask, render_template
+from . import recognition
 
 def create_app(test_config=None):    
     app = Flask(__name__, instance_relative_config=True)
@@ -36,5 +37,7 @@ def create_app(test_config=None):
     def helloworld():
         app.logger.info("Nueva solicitud recibida")
         return render_template("index.html", name="Hello world")
+    
+    app.register_blueprint(recognition.bp)
 
     return app
