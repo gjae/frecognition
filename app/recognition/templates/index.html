@@ -19,18 +19,31 @@
         </div>
         <div class="row">
             <div class="col-sm-12 col-md-8 col-lg-4 offset-4">
+                {% with messages = get_flashed_messages() %}
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="row">
+                                <div class="col-12">
+                                    <div class="alert alert-success w-100">
+                                        {{ message }}
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
                 <div class="row">
-                    <div class="col-6">
-                        <div class="card card-light w-100">
+                    <div class="col-4">
+                        <div class="card card-light w-100" style="cursor: pointer;"  @click="startWebcam(true)">
                             <div class="card-body">
                                 <div class="row text-center">
-                                    <strong>Cargar imagen</strong>
+                                    <strong>Imagen a reconocer</strong>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    <div class="col-6">
-                        <div class="card card-light w-100" style="cursor: pointer;"  @click="openWebcam = !openWebcam">
+                    <div class="col-4">
+                        <div class="card card-light w-100" style="cursor: pointer;"  @click="startWebcam(false)">
                             <div class="card-body">
                                 <div class="row text-center">
                                     <strong>Escanear rostro</strong>
@@ -38,9 +51,18 @@
                             </div>
                         </div>
                     </div>
+                    <div class="col-4">
+                        <div class="card card-light w-100" style="cursor: pointer;"  @click="showUploadPhotoForm = !showUploadPhotoForm">
+                            <div class="card-body">
+                                <div class="row text-center">
+                                    <strong>Cargar rostro</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 
-                <div class="row mt-2">
+                <div class="row mt-2" x-show="!showUploadPhotoForm">
                     <div class="col" x-show="!takenPicture">
                         <video autoplay playsinline id="webcam"></video>
                     </div>
@@ -49,10 +71,34 @@
                     </div>
                     <div class="col-12 mt-2">
                         <button class="btn btn-primary" @click="tomarFoto">Tomar foto</button>
+                        <button class="btn btn-warning" x-show="openWebcam" @click="openWebcam = false">Apagar camara</button>
                         <button class="btn btn-danger" x-show="takenPicture" @click="removePicture">
                             <i class="fas fa-trash"></i> Eliminar
                         </button>
                     </div>
+                </div>
+                <div class="row" x-show="showUploadPhotoForm">
+                    <form action="{{ url_for('recognition.manual_upload_image') }}" enctype="multipart/form-data" method="post">
+                        <div class="form-row">
+                            <label for="id_file_name">
+                                Nombre de la persona a reconocer *
+                                <input type="text" name="file_name" id="id_file_name" required class="form-control">
+                            </label>
+                        </div>
+                        <div class="form-row">
+                            <div class="col-12">
+                                <label for="id_upload_photo">
+                                    Cargar imagen *
+                                    <input type="file" required name="foto" id="id_upload_photo" class="form-control w-100">
+                                </label>
+                            </div>
+                        </div>
+                        <div class="form-row mt-2">
+                            <div class="col-12">
+                                <button class="btn btn-primary btn-block btn-large">Cargar</button>
+                            </div>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>
@@ -69,6 +115,9 @@ function app() {
         openWebcam: false,
         stream: null,
         takenPicture: false,
+        createRecognitionImages: null,
+        uploadPretakePhoto: false,
+        showUploadPhotoForm: false,
         start() {
             this.$watch("openWebcam", (value, oldValue) => {
                 if (value) {
@@ -78,6 +127,16 @@ function app() {
                     this.stopWebcam()
                 }
             })
+
+            this.$watch("showUploadPhotoForm", (value, oldValue) => {
+                if (value) {
+                    this.stopWebcam()
+                }
+            })
+        },
+        startWebcam(forRecognition = true) {
+            this.createRecognitionImages = forRecognition
+            this.openWebcam = true
         },
         removePicture() {
             const canvas = document.getElementById('fotoCapturada');
@@ -117,7 +176,14 @@ function app() {
         },
         async  enviarFotoAlBackend(blob) {
             const formData = new FormData();
+            let fileName = ""
+            
+            if (this.createRecognitionImages) {
+                fileName = prompt("Nombre del individuo", "MAXIMO DECIMO MERIDIO")
+            }
+
             formData.append('foto', blob, 'foto.jpg'); // Agrega el Blob al FormData
+            formData.append('file_name', fileName)
 
             try {
                 const respuesta = await fetch('/images/upload', {

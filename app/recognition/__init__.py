@@ -1,7 +1,7 @@
 import os
 import os.path
 import logging
-from flask import Flask, render_template
+from flask import Flask, render_template, current_app
 from . import recognition
 
 def create_app(test_config=None):    
@@ -14,6 +14,7 @@ def create_app(test_config=None):
 
     app.logger.addHandler(handler)
     app.logger.setLevel(logging.INFO)
+    app.config["UPLOAD_FOLDER"] = "./photos"
 
     app.config.from_mapping(
         SECRET_KEY="dev",
